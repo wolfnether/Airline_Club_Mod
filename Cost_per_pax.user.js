@@ -7,8 +7,8 @@
 // @match        https://*.airline-club.com/*
 // @icon         https://www.google.com/s2/favicons?domain=airline-club.com
 // @grant        none
-// @updateURL    TBS
-// @downloadURL  TBS
+// @updateURL    https://github.com/wolfnether/Airline_Club_Mod/raw/main/Cost_per_pax.user.js
+// @downloadURL  https://github.com/wolfnether/Airline_Club_Mod/raw/main/Cost_per_pax.user.js
 // ==/UserScript==
 console.log("Plane score script loading");
 
