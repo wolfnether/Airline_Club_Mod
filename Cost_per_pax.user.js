@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Cost per PAX
 // @namespace    http://tampermonkey.net/
-// @version      0.2.5
+// @version      0.2.5.1
 // @description  try to take over the world!
 // @author       Alrianne
 // @match        https://*.airline-club.com/*
