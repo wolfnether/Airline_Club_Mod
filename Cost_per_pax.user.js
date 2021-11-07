@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Cost per PAX
 // @namespace    http://tampermonkey.net/
-// @version      0.2.5.1
+// @version      0.2.6
 // @description  try to take over the world!
 // @author       Alrianne
 // @match        https://*.airline-club.com/*
@@ -177,6 +177,7 @@ window.updatePlanLinkInfo = function(linkInfo){
     }
 
     if (idFrom != linkInfo.fromAirportId){
+        idFrom = linkInfo.fromAirportId
         $.ajax({
             url:"airports/" + linkInfo.fromAirportId,
             async : false,
@@ -185,6 +186,7 @@ window.updatePlanLinkInfo = function(linkInfo){
     }
 
     if (idTo != linkInfo.toAirportId){
+        idTo = linkInfo.toAirportId
         $.ajax({
             url:"airports/" + linkInfo.toAirportId,
             async : false,
@@ -198,7 +200,9 @@ window.updatePlanLinkInfo = function(linkInfo){
 let _updateModelInfo = window.updateModelInfo;
 
 window.updateModelInfo = function(modelId) {
-    _updateModelInfo(modelId);
+    if (!loadedModelsById || !loadedModelsById[modelId]){
+        _updateModelInfo(modelId);
+    }
     _modelId = modelId;
 
 
@@ -250,6 +254,45 @@ window.updateModelInfo = function(modelId) {
         case 4:serviceLevelCost=13;break;
         case 5:serviceLevelCost=20;break;
     }
+
+    let basic = 0;
+    let multiplyFactor = 2;
+    if (airportFrom.countryCode == airportTo.countryCode) {
+        if (activeLink.distance <= 1000) {
+            basic = 8;
+        } else if (activeLink.distance <= 3000) {
+            basic = 10;
+        } else {
+            basic = 12;
+        }
+    } else if (airportFrom.zone == airportTo.zone){
+        if (activeLink.distance <= 2000) {
+            basic = 10;
+        } else if (activeLink.distance <= 4000) {
+            basic = 15;
+        } else {
+            basic = 20;
+        }
+    } else {
+        if (activeLink.distance <= 2000) {
+            basic = 15;
+            multiplyFactor = 3;
+        } else if (activeLink.distance <= 5000) {
+            basic = 25;
+            multiplyFactor = 3;
+        } else if (activeLink.distance <= 12000) {
+            basic = 30;
+            multiplyFactor = 4;
+        } else {
+            basic = 30;
+            multiplyFactor = 4;
+        }
+    }
+
+    let staffPerFrequency = multiplyFactor * 0.4;
+    let staffPer1000Pax = multiplyFactor;
+
+
     let durationInHour = linkModel.duration / 60;
 
     let price = model.price;
@@ -308,13 +351,16 @@ window.updateModelInfo = function(modelId) {
     let servicesCost = (20 + serviceLevelCost * durationInHour) * model.capacity * 2 * frequency;
     let cost = fuelCost + crewCost + airportFees + depreciationRate + servicesCost + maintenance;
 
+    let staffTotal = Math.floor(basic + staffPerFrequency * frequency + staffPer1000Pax * model.capacity * frequency / 1000);
+
     $('#airplaneModelDetails #FCPF').text("$" + commaSeparateNumber(Math.floor(fuelCost)));
     $('#airplaneModelDetails #CCPF').text("$" + commaSeparateNumber(Math.floor(crewCost)));
     $('#airplaneModelDetails #AFPF').text("$" + commaSeparateNumber(airportFees));
     $('#airplaneModelDetails #depreciation').text("$" + commaSeparateNumber(Math.floor(depreciationRate)));
     $('#airplaneModelDetails #SSPF').text("$" + commaSeparateNumber(Math.floor(servicesCost)));
     $('#airplaneModelDetails #maintenance').text("$" + commaSeparateNumber(Math.floor(maintenance)));
-    $('#airplaneModelDetails #cpp').text("$" + commaSeparateNumber(Math.floor(cost / (model.capacity * frequency))));
+    $('#airplaneModelDetails #cpp').text("$" + commaSeparateNumber(Math.floor(cost / (model.capacity * frequency))) + " * " + (model.capacity * frequency));
+    $('#airplaneModelDetails #cps').text("$" + commaSeparateNumber(Math.floor(cost / staffTotal)) + " * " + staffTotal);
 }
 
 $("#airplaneModelDetails #speed").parent().after(`
@@ -367,6 +413,12 @@ $("#airplaneModelDetails #speed").parent().after(`
   <h5>Cost per PAX:</h5>
  </div>
  <div class="value" id="cpp"></div>
+</div>
+<div class="table-row">
+ <div class="label">
+  <h5>Cost per staff:</h5>
+ </div>
+ <div class="value" id="cps"></div>
 </div>
 <div class="table-row">
  <div class="label">&#8205;</div>
