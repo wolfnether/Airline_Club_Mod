@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Cost per PAX
 // @namespace    http://tampermonkey.net/
-// @version      0.2.6
+// @version      0.2.6.1
 // @description  try to take over the world!
 // @author       Alrianne
 // @match        https://*.airline-club.com/*
@@ -148,7 +148,7 @@ let idFrom = -1;
 let idTo = -1;
 let airportFrom;
 let airportTo;
-let _modelId;
+let _modelId = -1;
 
 let observer = new MutationObserver(function(mutations) {
     updateModelInfo(_modelId);
@@ -200,7 +200,7 @@ window.updatePlanLinkInfo = function(linkInfo){
 let _updateModelInfo = window.updateModelInfo;
 
 window.updateModelInfo = function(modelId) {
-    if (!loadedModelsById || !loadedModelsById[modelId]){
+    if (_modelId != modelId){
         _updateModelInfo(modelId);
     }
     _modelId = modelId;
