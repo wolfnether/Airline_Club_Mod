@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Cost per PAX
 // @namespace    http://tampermonkey.net/
-// @version      0.2.6.1
+// @version      0.2.6.2
 // @description  try to take over the world!
 // @author       Alrianne
 // @match        https://*.airline-club.com/*
@@ -50,6 +50,7 @@ window.updateAirplaneModelTable = function(sortProperty, sortOrder) {
                 case 'REGIONAL' : plane_category=3;break;
                 case 'MEDIUM' : plane_category=8;break;
                 case 'LARGE' : plane_category=12;break;
+                case 'EXTRA LARGE' :
                 case 'X_LARGE' : plane_category=15;break;
                 case 'JUMBO' : plane_category=18;break;
                 case 'SUPERSONIC' : plane_category=12 ;break;
@@ -219,9 +220,11 @@ window.updateModelInfo = function(modelId) {
         case 'REGIONAL' : plane_category=3;break;
         case 'MEDIUM' : plane_category=8;break;
         case 'LARGE' : plane_category=12;break;
+        case 'EXTRA LARGE' :
         case 'X_LARGE' : plane_category=15;break;
         case 'JUMBO' : plane_category=18;break;
         case 'SUPERSONIC' : plane_category=12 ;break;
+        default: console.error("CPP E1:updateAirplaneModelTable unknown airplane type: " + model.airplaneType);
     }
 
     let baseSlotFee = 0;
