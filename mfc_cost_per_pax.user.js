@@ -4,8 +4,9 @@
 // @match       https://play.myfly.club/*
 // @grant       none
 // @version     1.0
-// @author      -
-// @description 22/12/2025 21:41:37
+// @author      Alrianne
+// @description Simulating cost per capacity on updating link
+// @downloadURL https://raw.githubusercontent.com/wolfnether/Airline_Club_Mod/refs/heads/main/mfc_cost_per_pax.user.js
 // ==/UserScript==
 
 console.log("Plane score script loading");
