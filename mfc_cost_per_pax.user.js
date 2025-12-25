@@ -1,10 +1,12 @@
 // ==UserScript==
-// @name        New script myfly.club
+// @name        Cost Per Pax myfly.club
 // @namespace   Violentmonkey Scripts
 // @match       https://play.myfly.club/*
 // @grant       none
 // @version     1.1
-// @author      -
+// @author      Alrianne
+// @description Simulating cost per capacity on updating link
+// @downloadURL https://raw.githubusercontent.com/wolfnether/Airline_Club_Mod/refs/heads/main/mfc_cost_per_pax.user.js
 // @description 22/12/2025 21:41:37
 // ==/UserScript==
 
