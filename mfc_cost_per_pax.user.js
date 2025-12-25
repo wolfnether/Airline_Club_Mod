@@ -1,12 +1,11 @@
 // ==UserScript==
-// @name        Cost Per Pax myfly.club
+// @name        New script myfly.club
 // @namespace   Violentmonkey Scripts
 // @match       https://play.myfly.club/*
 // @grant       none
-// @version     1.0
-// @author      Alrianne
-// @description Simulating cost per capacity on updating link
-// @downloadURL https://raw.githubusercontent.com/wolfnether/Airline_Club_Mod/refs/heads/main/mfc_cost_per_pax.user.js
+// @version     1.1
+// @author      -
+// @description 22/12/2025 21:41:37
 // ==/UserScript==
 
 console.log("Plane score script loading");
@@ -163,17 +162,24 @@ function linkCostPerPax(modelId) {
     }
 
     let basic = 0;
-    let multiplyFactor = 2;
+    let multiplier = 0;
     if (airportFrom.countryCode != airportTo.countryCode) {
-        multiplyFactor = Math.pow(activeLink.distance + 900, 0.16) - 1.5;
-        basic = 4.75 * multiplyFactor - 5.25;
+        multiplier = Math.pow(activeLink.distance + 900, 0.16) - 1.5;
+        basic = 4.75 * multiplier - 5.25;
     } else {
-        multiplyFactor = Math.pow(activeLink.distance + 600, 0.15) - 2;
-        basic = 3.5 * multiplyFactor - 1.25;
+        multiplier = Math.pow(activeLink.distance + 600, 0.15) - 2;
+        basic = 3.5 * multiplier - 1.25;
     }
 
-    let staffPerFrequency = multiplyFactor * 0.5;
-    let staffPer500Pax = 1.35 * multiplyFactor;
+    let staffPerFrequency = 0;
+
+    switch(activeAirline.type) {
+        case "Regional Partner": staffPerFrequency = multiplier * 0.1; break;
+        case "Luxury": staffPerFrequency = multiplier * 0.2; break;
+        default: staffPerFrequency = multiplier * 0.5; break;
+    }
+
+    let staffPer500Pax = 1.35 * multiplier;
 
     let durationInHour = linkModel.duration / 60;
 
@@ -184,6 +190,8 @@ function linkCostPerPax(modelId) {
     if( model.originalPrice){
         price = model.originalPrice;
     }
+
+    const capacity = [0,0,0];
 
     for (let row of $(".frequencyDetail .airplaneRow")) {
         let airplane = $(row).data("airplane");
@@ -202,8 +210,12 @@ function linkCostPerPax(modelId) {
 
         maintenance += model.capacity * 155 * utilisation * factor;
 
-        console.log(utilisation)
+        console.log(airplane)
         frequency += freq;
+
+        capacity[0] += airplane.configuration.economy * freq;
+        capacity[1] += airplane.configuration.business * freq;
+        capacity[2] += airplane.configuration.first * freq;
     }
 
     if (frequency == 0){
@@ -216,30 +228,59 @@ function linkCostPerPax(modelId) {
 
         let decayRate = 100 / (model.lifespan * 3) * (1 + 2 * planeUtilisation);
         depreciationRate += Math.floor(price * (decayRate / 100) * utilisation);
-        maintenance += model.capacity * 155 * utilisation * factor;;
+        maintenance += model.capacity * 155 * utilisation * factor;
+
+        capacity[0] = model.capacity * frequency;
     }
+
+    const totalCapacity = capacity[0]+capacity[1]+capacity[2];
 
     let fuelCost = FUEL_UNIT_COST * calcFuelBurn(model, activeLink.distance) * frequency;
     fuelCost += fuelCost * (activeAirline.fuelTaxRate / 100);
 
-    let crewCost = (Math.pow(activeAirline.targetServiceQuality / 22, 1.95) + 6.75) * model.capacity * frequency * 1.1 * durationInHour;
-    let airportFees = fromSlotFee * plane_category * 0.9 + toSlotFee * plane_category * frequency + (airportFrom.size + airportTo.size - 1) * model.capacity;
-    let servicesCost = 1.1 * durationInHour * model.capacity * frequency * serviceLevelCost;
+    const crewCost = [0,0,0];
+    const targetQualityCost = Math.pow(activeAirline.targetServiceQuality / 22, 1.95);
+    crewCost[0] = Math.round((targetQualityCost + 6.75) * capacity[0] * 1.1 * durationInHour);
+    crewCost[1] = Math.round((targetQualityCost + 6.75) * capacity[1] * 1.5 * durationInHour);
+    crewCost[2] = Math.round((targetQualityCost + 6.75) * capacity[2] * 3.6 * durationInHour);
+    const crewCostTotal = crewCost[0] + crewCost[1] + crewCost[2];
 
-    let cost = fuelCost + crewCost + airportFees + depreciationRate + servicesCost + maintenance;
+    let airportFees = fromSlotFee * plane_category * 0.9 + toSlotFee * plane_category * frequency + (airportFrom.size + airportTo.size - 1) * totalCapacity;
 
-    let staffTotal = Math.floor(basic + staffPerFrequency * frequency + staffPer500Pax * model.capacity * frequency / 500);
+    const servicesCost = [0,0,0];
+    servicesCost[0] = 1.1 * durationInHour * capacity[0] * serviceLevelCost;
+    servicesCost[1] = 1.5 * durationInHour * capacity[1] * serviceLevelCost;
+    servicesCost[2] = 3.6 * durationInHour * capacity[2] * serviceLevelCost;
+    
+    const servicesCostTotal = servicesCost[0] + servicesCost[1] + servicesCost[2];
 
-    console.log(model, linkModel);
+    let cost = fuelCost + crewCostTotal + airportFees + depreciationRate + servicesCostTotal + maintenance;
 
-    $('#airplaneModelDetails #FCPF').text("$" + commaSeparateNumber(Math.floor(fuelCost)));
-    $('#airplaneModelDetails #CCPF').text("$" + commaSeparateNumber(Math.floor(crewCost)));
-    $('#airplaneModelDetails #AFPF').text("$" + commaSeparateNumber(Math.floor(airportFees)));
+    let staffTotal = Math.ceil(basic + staffPerFrequency * frequency + staffPer500Pax * totalCapacity / 500);
+
+    const weight = [0,0,0];
+    weight[0] = 1 * capacity[0] / totalCapacity;
+    weight[1] = 2.5 * capacity[1] / totalCapacity;
+    weight[2] = 6 * capacity[2] / totalCapacity;
+    const totalWeight = weight[0] + weight[1] + weight[2];
+
+    const costProRata = [weight[0]/totalWeight , weight[1]/totalWeight, weight[2]/totalWeight];
+    costProRata[0] *= (cost - servicesCostTotal - crewCostTotal);
+    costProRata[1] *= (cost - servicesCostTotal - crewCostTotal);
+    costProRata[2] *= (cost - servicesCostTotal - crewCostTotal);
+
+    costProRata[0] += crewCost[0] + servicesCost[0];
+    costProRata[1] += crewCost[1] + servicesCost[1];
+    costProRata[2] += crewCost[2] + servicesCost[2];
+
+    $('#airplaneModelDetails #FCPF').text("$" + commaSeparateNumber(Math.round(fuelCost)));
+    $('#airplaneModelDetails #CCPF').text("$" + commaSeparateNumber(crewCost[0]) + " | $" + commaSeparateNumber(crewCost[1]) + " | $" + commaSeparateNumber(crewCost[2])+  " | $" + commaSeparateNumber(crewCostTotal));
+    $('#airplaneModelDetails #AFPF').text("$" + commaSeparateNumber(Math.round(airportFees)));
     $('#airplaneModelDetails #depreciation').text("$" + commaSeparateNumber(Math.floor(depreciationRate)));
-    $('#airplaneModelDetails #SSPF').text("$" + commaSeparateNumber(Math.floor(servicesCost)));
-    $('#airplaneModelDetails #maintenance').text("$" + commaSeparateNumber(Math.floor(maintenance)));
-    $('#airplaneModelDetails #cpp').text("$" + commaSeparateNumber(Math.floor(cost / (model.capacity * frequency))) + " * " + (model.capacity * frequency));
-    $('#airplaneModelDetails #cps').text("$" + commaSeparateNumber(Math.floor(cost / staffTotal)) + " * " + staffTotal);
+    $('#airplaneModelDetails #SSPF').text("$" + commaSeparateNumber(Math.round(servicesCost[0])) + " | $" + commaSeparateNumber(Math.round(servicesCost[1])) + " | $" + commaSeparateNumber(Math.round(servicesCost[2])) + " | $" + commaSeparateNumber(Math.round(servicesCostTotal)));
+    $('#airplaneModelDetails #maintenance').text("$" + commaSeparateNumber(Math.round(maintenance)));
+    $('#airplaneModelDetails #cpp').text("$" + commaSeparateNumber(Math.round(capacity[0]==0?0:costProRata[0]/capacity[0])) + " | $" + commaSeparateNumber(Math.round(capacity[1]==0?0:costProRata[1]/capacity[1])) + " | $" + commaSeparateNumber(Math.round(capacity[2]==0?0:costProRata[2]/capacity[2])) + " | $" + commaSeparateNumber(Math.round(cost / totalCapacity)));
+    $('#airplaneModelDetails #cps').text("$" + commaSeparateNumber(Math.round(cost / staffTotal)) + " * " + staffTotal);
 }
 
 $("#airplaneModelDetails #speed").parent().after(`
@@ -259,12 +300,6 @@ $("#airplaneModelDetails #speed").parent().after(`
 </div>
 <div class="table-row">
  <div class="label">
-  <h5>Crew cost:</h5>
- </div>
- <div class="value" id="CCPF"></div>
-</div>
-<div class="table-row">
- <div class="label">
   <h5>Airport fees :</h5>
  </div>
  <div class="value" id="AFPF"></div>
@@ -277,15 +312,21 @@ $("#airplaneModelDetails #speed").parent().after(`
 </div>
 <div class="table-row">
  <div class="label">
-  <h5>Service supplies:</h5>
- </div>
- <div class="value" id="SSPF"></div>
-</div>
-<div class="table-row">
- <div class="label">
   <h5>Maintenance :</h5>
  </div>
  <div class="value" id="maintenance"></div>
+</div>
+<div class="table-row">
+ <div class="label">
+  <h5>Crew cost:</h5>
+ </div>
+ <div class="value" id="CCPF"></div>
+</div>
+<div class="table-row">
+ <div class="label">
+  <h5>Service supplies:</h5>
+ </div>
+ <div class="value" id="SSPF"></div>
 </div>
 <div class="table-row">
  <div class="label">
